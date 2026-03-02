@@ -95,7 +95,7 @@ class Clean():
         dirs_to_remove = []
         for tmpdir in tmpdirs:
             logging.info(f'Removing {tmpdir}')
-            if build_system == 'isar':
+            if (build_system or '').startswith('isar'):
                 dirs_to_remove.append(tmpdir)
             else:
                 if not args.dry_run:
@@ -104,12 +104,39 @@ class Clean():
         if len(dirs_to_remove) == 0:
             return
 
+        # isar only
+        if build_system == 'isar-rootless':
+            self._rmtree_unshare(dirs_to_remove, args.dry_run)
+        else:
+            self._rmtree_sudo(dirs_to_remove, args.dry_run)
+
+    @staticmethod
+    def _rmtree_unshare(dirs_to_remove, dry_run):
+        uid = os.getuid()
+        for d in dirs_to_remove:
+            # find all dir entries that are not owned by the calling user
+            # and remove them by entering the user namespace first
+            clean_args = ['find', str(d), '(', '!', '-user', str(uid), '-type',
+                          'd', '-prune', ')', '-exec']
+            clean_args += ['unshare', '--map-auto', '--map-root-user',
+                           '--keep-caps', 'rm', '-rf', '{}', ';']
+            logging.debug(' '.join(clean_args))
+            if not dry_run:
+                subprocess.check_call(clean_args)
+            # clean remaining files (owned by caller)
+            clean_args = ['rm', '-rf', str(d)]
+            logging.debug(' '.join(clean_args))
+            if not dry_run:
+                subprocess.check_call(clean_args)
+
+    @staticmethod
+    def _rmtree_sudo(dirs_to_remove, dry_run):
         clean_args = ['sudo', '--prompt', '[sudo] enter password for %U '
                       'to clean ISAR artifacts']
         clean_args.extend(['rm', '-rf'])
         clean_args.extend([p.as_posix() for p in dirs_to_remove])
         logging.debug(' '.join(clean_args))
-        if not args.dry_run:
+        if not dry_run:
             subprocess.check_call(clean_args)
 
     @staticmethod
