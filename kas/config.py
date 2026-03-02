@@ -26,6 +26,7 @@
 import os
 import json
 import copy
+import logging
 from pathlib import Path
 from .repos import Repo
 from .includehandler import IncludeHandler
@@ -69,7 +70,13 @@ class Config:
         """
             Returns the pre-selected build system
         """
-        return self._config.get('build_system', '')
+        build_system = self._config.get('build_system', '')
+        if build_system == 'isar':
+            logging.warning(
+                "The semantics of build_system: isar might change in the "
+                "future. Please use 'isar-privileged' or 'isar-rootless'.")
+            build_system = 'isar-privileged'
+        return build_system
 
     def find_missing_repos(self, repo_paths={}):
         """

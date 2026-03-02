@@ -405,7 +405,7 @@ def get_build_environ(build_system):
     init_repo = None
     if build_system in ['openembedded', 'oe']:
         scripts = ['oe-init-build-env']
-    elif build_system == 'isar':
+    elif build_system.startswith('isar'):
         scripts = ['isar-init-build-env']
     else:
         scripts = ['oe-init-build-env', 'isar-init-build-env']
