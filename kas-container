@@ -68,6 +68,8 @@ usage()
 	printf "%b" "\nOptional arguments:\n"
 	printf "%b" "--isar\t\t\tUse kas-isar container to build Isar image. To force\n"
 	printf "%b" "      \t\t\tthe use of run0 over sudo, set KAS_SUDO_CMD=run0.\n"
+	printf "%b" "--isar-privileged\tRun the isar build in privileged mode\n"
+	printf "%b" "--isar-rootless\t\tRun the isar build in rootless mode\n"
 	printf "%b" "--with-loop-dev		Pass a loop device to the " \
 		    "container. Only required if\n"
 	printf "%b" "\t\t\tloop-mounting is used by recipes.\n"
@@ -167,6 +169,33 @@ enable_isar_mode()
 		KAS_CONTAINER_COMMAND="${_KAS_SUDO_CMD} ${KAS_CONTAINER_COMMAND}"
 		KAS_DOCKER_ROOTLESS=0
 	fi
+}
+
+enable_isar_rootless_mode()
+{
+       if [ -n "${ISAR_ROOTLESS_MODE}" ]; then
+               return
+       fi
+       ISAR_ROOTLESS_MODE=1
+       KAS_CONTAINER_IMAGE_NAME_DEFAULT="kas-isar"
+
+       # Use --privileged to pass the ambient capabilities into the container.
+       # When calling from the user session (podman or docker-rootless), this
+       # is fundamentally different from the system docker run --privileged
+       if [ "${KAS_CONTAINER_ENGINE}" = "podman" ]; then
+               KAS_RUNTIME_ARGS="${KAS_RUNTIME_ARGS} --userns=keep-id --privileged"
+       elif [ "${KAS_DOCKER_ROOTLESS}" = "1" ]; then
+               KAS_ISAR_ARGS="--privileged"
+       else
+               # we don't need --privileged, but we need to run with SYS_ADMIN
+               # to be able to unshare.
+               KAS_ISAR_ARGS=" \
+                       --security-opt seccomp=unconfined \
+                       --security-opt apparmor=unconfined \
+                       --security-opt systempaths=unconfined \
+                       --cap-add=SYS_ADMIN \
+               "
+       fi
 }
 
 enable_oe_mode()
@@ -354,8 +383,12 @@ esac
 # parse kas-container options
 while [ $# -gt 0 ]; do
 	case "$1" in
-	--isar)
+	--isar|--isar-privileged)
 		enable_isar_mode
+		shift 1
+		;;
+	--isar-rootless)
+		enable_isar_rootless_mode
 		shift 1
 		;;
 	--with-loop-dev)
@@ -571,8 +604,10 @@ else
 		sed 's/build_system:[ ]\+//')
 fi
 
-if [ "${BUILD_SYSTEM}" = "isar" ]; then
+if [ "${BUILD_SYSTEM}" = "isar" ] || [ "${BUILD_SYSTEM}" = "isar-privileged" ]; then
 	enable_isar_mode
+elif [ "${BUILD_SYSTEM}" = "isar-rootless" ]; then
+	enable_isar_rootless_mode
 elif [ -z "${ISAR_MODE}" ]; then
 	enable_oe_mode
 fi
@@ -769,6 +804,10 @@ while [ $KAS_EXTRA_BITBAKE_ARGS -gt 0 ]; do
 	set -- "$@" "$arg"
 	KAS_EXTRA_BITBAKE_ARGS=$((KAS_EXTRA_BITBAKE_ARGS - 1))
 done
+
+if [ "${ISAR_MODE}" = "1" ] && [ "${ISAR_ROOTLESS_MODE}" = "1" ]; then
+       fatal_error "only one of --isar and --isar-rootless can be selected."
+fi
 
 # shellcheck disable=SC2086
 trace ${KAS_CONTAINER_COMMAND} run "$@"
