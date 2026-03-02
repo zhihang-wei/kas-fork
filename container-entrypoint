@@ -168,6 +168,17 @@ if [ "$PWD" = / ]; then
 	cd /builder || exit 1
 fi
 
+if [ "$KAS_BLOCK_SUDO" = "1" ]; then
+       mkdir -p /usr/local/libexec
+       cat <<'EOF' > /usr/local/libexec/kas-no-sudo
+#!/bin/sh
+printf "KAS_BLOCK_SUDO=1: sudo is prohibited\n" >&2
+exit 1
+EOF
+       chmod +x /usr/local/libexec/kas-no-sudo
+       ln -sf /usr/local/libexec/kas-no-sudo /usr/bin/sudo
+fi
+
 if [ -n "$1" ]; then
 	case "$1" in
 	build|checkout|clean*|diff|dump|for-all-repos|lock|menu|purge|shell|-*)

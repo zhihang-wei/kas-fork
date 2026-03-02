@@ -178,6 +178,7 @@ enable_isar_rootless_mode()
        fi
        ISAR_ROOTLESS_MODE=1
        KAS_CONTAINER_IMAGE_NAME_DEFAULT="kas-isar"
+       KAS_RUNTIME_ARGS="${KAS_RUNTIME_ARGS} -e KAS_BLOCK_SUDO=1"
 
        # Use --privileged to pass the ambient capabilities into the container.
        # When calling from the user session (podman or docker-rootless), this
