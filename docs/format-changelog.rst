@@ -219,3 +219,5 @@ Added
 
 - Switch to nodistro which is the default distro setting in
   openembedded-core.
+- Extend the allowed values of ``build_system`` by adding ``isar-privileged``
+  and ``isar-rootless``.

@@ -83,7 +83,9 @@
             "enum": [
                 "openembedded",
                 "oe",
-                "isar"
+                "isar",
+                "isar-privileged",
+                "isar-rootless"
             ]
         },
         "defaults": {
