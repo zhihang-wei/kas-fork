@@ -30,4 +30,4 @@ within 5 working days. If the issue is confirmed as a vulnerability by us, we
 will open a Security Advisory on github and give credits for your report if
 desired. This project follows a 90 day disclosure timeline.
 
-==
+====
